@@ -58,24 +58,24 @@ variable "metric_namespace" {
   default = "CWAgent"
 }
 
-variable "create_example_alarms" {
+variable "create_instance_alarms" {
   type    = bool
   default = true
 }
 
-variable "example_instance_id" {
+variable "monitored_instance_id" {
   description = "Set to your EC2 instance id (i-...) after launch to create alarms; leave empty first apply"
   type        = string
   default     = ""
 }
 
-variable "example_fstype" {
+variable "disk_filesystem_type" {
   description = "xfs for Amazon Linux, ext4 for many Ubuntu AMIs"
   type        = string
   default     = "xfs"
 }
 
-variable "example_path" {
+variable "disk_mount_path" {
   type    = string
   default = "/"
 }

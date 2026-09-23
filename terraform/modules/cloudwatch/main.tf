@@ -42,25 +42,25 @@ variable "metric_namespace" {
   default = "CWAgent"
 }
 
-variable "create_example_alarms" {
-  description = "Create template alarms when example_instance_id is provided"
+variable "create_instance_alarms" {
+  description = "Create template alarms when monitored_instance_id is provided"
   type        = bool
   default     = true
 }
 
-variable "example_instance_id" {
-  description = "Optional instance id for example alarms; empty skips instance-specific alarms"
+variable "monitored_instance_id" {
+  description = "Optional EC2 instance id for per-instance alarms; empty skips instance-specific alarms"
   type        = string
   default     = ""
 }
 
-variable "example_fstype" {
+variable "disk_filesystem_type" {
   description = "Filesystem type dimension used by CloudWatch Agent (xfs on Amazon Linux, ext4 on Ubuntu)"
   type        = string
   default     = "xfs"
 }
 
-variable "example_path" {
+variable "disk_mount_path" {
   type    = string
   default = "/"
 }
@@ -88,17 +88,17 @@ resource "aws_cloudwatch_dashboard" "disk" {
 }
 
 locals {
-  create_alarms = var.create_example_alarms && length(var.example_instance_id) > 0
+  create_alarms = var.create_instance_alarms && length(var.monitored_instance_id) > 0
   dims = {
-    InstanceId = var.example_instance_id
-    path       = var.example_path
-    fstype     = var.example_fstype
+    InstanceId = var.monitored_instance_id
+    path       = var.disk_mount_path
+    fstype     = var.disk_filesystem_type
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "disk_warning" {
   count               = local.create_alarms ? 1 : 0
-  alarm_name          = "disk-used-warning-${var.example_instance_id}"
+  alarm_name          = "disk-used-warning-${var.monitored_instance_id}"
   alarm_description   = "Disk used percent >= ${var.warning_threshold_percent}% (Warning)"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 2
@@ -117,7 +117,7 @@ resource "aws_cloudwatch_metric_alarm" "disk_warning" {
 
 resource "aws_cloudwatch_metric_alarm" "disk_critical" {
   count               = local.create_alarms ? 1 : 0
-  alarm_name          = "disk-used-critical-${var.example_instance_id}"
+  alarm_name          = "disk-used-critical-${var.monitored_instance_id}"
   alarm_description   = "Disk used percent >= ${var.critical_threshold_percent}% (Critical)"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
@@ -135,7 +135,7 @@ resource "aws_cloudwatch_metric_alarm" "disk_critical" {
 
 resource "aws_cloudwatch_metric_alarm" "disk_free_low" {
   count               = local.create_alarms ? 1 : 0
-  alarm_name          = "disk-free-low-${var.example_instance_id}"
+  alarm_name          = "disk-free-low-${var.monitored_instance_id}"
   alarm_description   = "Disk free bytes below ${var.min_free_bytes}"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 2
@@ -153,8 +153,8 @@ resource "aws_cloudwatch_metric_alarm" "disk_free_low" {
 # Missing metrics = agent/config problem (heal signal: re-run enroll)
 resource "aws_cloudwatch_metric_alarm" "agent_missing_metrics" {
   count               = local.create_alarms ? 1 : 0
-  alarm_name          = "disk-agent-missing-${var.example_instance_id}"
-  alarm_description   = "No disk_used_percent samples — agent may be down; re-run ansible playbooks/enroll.yml"
+  alarm_name          = "disk-agent-missing-${var.monitored_instance_id}"
+  alarm_description   = "No disk_used_percent samples — agent may be down; re-run ansible playbooks/enroll-disk-monitoring.yml"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 3
   metric_name         = "disk_used_percent"

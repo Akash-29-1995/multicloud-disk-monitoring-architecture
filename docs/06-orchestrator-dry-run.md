@@ -32,7 +32,7 @@ PYTHONPATH=. python3 -m orchestrator \
   --environment prod \
   --region us-east-1 \
   --dry-run \
-  --accounts-file config/accounts.yaml.example
+  --accounts-file config/customer-accounts.template.yaml
 ```
 
 **Expected (good):**
@@ -43,7 +43,7 @@ MODE: DRY RUN
 [PASS] Registry match: nike-prod-a status=enrolled
 [PASS] Discovered host_count=2
        - i-DRYRUN0000000001 ...
-[PASS] Wrote Ansible inventory: .../inventory/generated/nike_...ini
+[PASS] Wrote Ansible inventory: .../inventory/orchestrator-output/nike_...ini
 [INFO] DRY RUN complete
 ```
 
@@ -62,8 +62,8 @@ MODE: DRY RUN
 ## Step 3 — Inspect generated inventory
 
 ```bash
-ls ansible/inventory/generated/
-head -20 ansible/inventory/generated/nike_111111111111_prod_us-east-1.ini
+ls ansible/inventory/orchestrator-output/
+head -20 ansible/inventory/orchestrator-output/nike_111111111111_prod_us-east-1.ini
 ```
 
 **Expected:** files `.yaml`, `.ini`, `.json` for your customer/account/env/region.
@@ -81,7 +81,7 @@ PYTHONPATH=. python3 -m orchestrator \
   --account YOUR_ACCOUNT_ID \
   --environment prod \
   --region us-east-1 \
-  --accounts-file config/accounts.yaml
+  --accounts-file config/customer-accounts.yaml
 ```
 
 **Expected banner:**
@@ -94,7 +94,7 @@ Then enroll:
 
 ```bash
 cd ansible
-ansible-playbook -i inventory/generated/<file>.ini playbooks/enroll.yml -v
+ansible-playbook -i inventory/orchestrator-output/<file>.ini playbooks/enroll-disk-monitoring.yml -v
 ```
 
 ---

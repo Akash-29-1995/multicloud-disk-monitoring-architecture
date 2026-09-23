@@ -30,7 +30,7 @@ python -m orchestrator ...
 ```bash
 PYTHONPATH=. python3 -m orchestrator --cloud aws --customer nike \
   --account 111111111111 --environment prod --region us-east-1 --dry-run \
-  --accounts-file config/accounts.yaml.example
+  --accounts-file config/customer-accounts.template.yaml
 ```
 
 Same code path Jenkins uses.

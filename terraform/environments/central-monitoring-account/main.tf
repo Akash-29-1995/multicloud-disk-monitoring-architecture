@@ -1,7 +1,7 @@
 # Multi-account EXAMPLE environment
 #
 # Beginners: finish docs/02 (single account) and docs/03 before this.
-# Preferred beginner path for workload roles: apply environments/example
+# Preferred beginner path for workload roles: apply environments/single-account-mvp
 # with trusted_principal_arns = [central principal] while using workload credentials.
 #
 # This environment wires the CENTRAL side: dashboard + workload role ARN registry.
@@ -63,12 +63,12 @@ locals {
 module "central_cloudwatch" {
   source = "../../modules/cloudwatch"
 
-  dashboard_name        = "lucidity-disk-monitoring-central"
-  dashboard_body        = local.dashboard_body
-  sns_topic_name        = "lucidity-disk-alerts-central"
-  alarm_email           = var.alarm_email
-  create_example_alarms = false
-  tags                  = local.tags
+  dashboard_name         = "lucidity-disk-monitoring-central"
+  dashboard_body         = local.dashboard_body
+  sns_topic_name         = "lucidity-disk-alerts-central"
+  alarm_email            = var.alarm_email
+  create_instance_alarms = false
+  tags                   = local.tags
 }
 
 module "monitoring_account" {

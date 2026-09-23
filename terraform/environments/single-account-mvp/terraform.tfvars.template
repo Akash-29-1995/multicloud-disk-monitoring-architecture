@@ -1,21 +1,23 @@
 # Copy this file to terraform.tfvars and fill in YOUR values.
-# terraform.tfvars is gitignored — never commit real emails/account IDs if sensitive.
+# terraform.tfvars is gitignored — never commit secrets.
 
 aws_region = "us-east-1"
 
 # Optional: restrict AssumeRole to a specific IAM user/role ARN instead of account root
-# trusted_principal_arns = ["arn:aws:iam::123456789012:role/YourAdminRole"]
+# trusted_principal_arns = ["arn:aws:iam::123456789012:role/LucidityMonitoringAdmin"]
 
 # Leave empty for single-account MVP
 external_id = ""
 
-alarm_email = "you@example.com"
+alarm_email = "you@company.com"
 
 warning_threshold_percent  = 80
 critical_threshold_percent = 90
 min_free_bytes             = 5368709120 # 5 GiB
 
-# After you have an instance id, set it and re-apply to create alarms:
-# example_instance_id = "i-0123456789abcdef0"
-# example_fstype      = "xfs"   # or "ext4"
-example_instance_id = ""
+# After you have an EC2 instance to monitor, set these and re-apply:
+# monitored_instance_id = "i-0123456789abcdef0"
+# disk_filesystem_type  = "xfs"   # or "ext4" on Ubuntu
+# disk_mount_path       = "/"
+monitored_instance_id = ""
+create_instance_alarms = true

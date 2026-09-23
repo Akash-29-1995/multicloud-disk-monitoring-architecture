@@ -1,6 +1,6 @@
 ---
 # Output-based validation — proves enrollment state on the host.
-# Does not replace CloudWatch metric validation (see scripts/validate_live.sh).
+# Does not replace CloudWatch metric validation (see scripts/validate-cloudwatch-metrics.sh).
 
 - name: Validate disk monitoring enrollment
   hosts: all
@@ -39,7 +39,7 @@
       ansible.builtin.assert:
         that:
           - svc.stdout == 'active'
-        fail_msg: "[FAIL] Agent service not active — run playbooks/configure-monitoring.yml"
+        fail_msg: "[FAIL] Agent service not active — run playbooks/reconcile-agent-config.yml"
         success_msg: "[PASS] Agent service active"
 
     - name: Slurp config
@@ -59,4 +59,4 @@
       ansible.builtin.debug:
         msg: >-
           [PASS] Host-level validation OK for {{ inventory_hostname }}.
-          Still required: scripts/validate_live.sh to confirm CloudWatch datapoints.
+          Still required: scripts/validate-cloudwatch-metrics.sh to confirm CloudWatch datapoints.

@@ -56,8 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--external-id", default="", help="Optional STS ExternalId")
     p.add_argument(
         "--accounts-file",
-        default=str(ROOT / "config" / "accounts.yaml"),
-        help="Path to accounts registry",
+        default=str(ROOT / "config" / "customer-accounts.yaml"),
+        help="Path to customer AWS account registry",
     )
     p.add_argument(
         "--profiles-file",
@@ -65,7 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--output-dir",
-        default=str(ROOT / "ansible" / "inventory" / "generated"),
+        default=str(ROOT / "ansible" / "inventory" / "orchestrator-output"),
     )
     p.add_argument("--dry-run", action="store_true", help="Simulate without live AWS calls")
     return p
@@ -93,13 +93,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
     print("[PASS] Parameters validated")
 
-    # Prefer example registry when accounts.yaml not present (reviewer clone)
+    # Prefer committed template when personal registry is not present yet
     accounts_path = Path(args.accounts_file)
     if not accounts_path.exists():
-        example = ROOT / "config" / "accounts.yaml.example"
-        if example.exists():
-            accounts_path = example
-            print(f"[INFO] Using {example} (copy to accounts.yaml for real registry)")
+        template = ROOT / "config" / "customer-accounts.template.yaml"
+        if template.exists():
+            accounts_path = template
+            print(
+                f"[INFO] Using {template} "
+                "(copy to config/customer-accounts.yaml for your real accounts)"
+            )
 
     registry = load_accounts_registry(accounts_path)
     account = resolve_account(
@@ -193,15 +196,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"[PASS] Wrote summary JSON:         {json_path}")
 
     playbook = {
-        "enroll": "playbooks/enroll.yml",
-        "reconcile": "playbooks/configure-monitoring.yml",
+        "enroll": "playbooks/enroll-disk-monitoring.yml",
+        "reconcile": "playbooks/reconcile-agent-config.yml",
         "discover": None,
     }.get(args.action)
 
     if playbook and inventory.hosts:
         print("[INFO] Next step (from ansible/ directory):")
         print(
-            f"  ansible-playbook -i inventory/generated/{ini_path.name} {playbook} -v"
+            f"  ansible-playbook -i inventory/orchestrator-output/{ini_path.name} {playbook} -v"
         )
     elif args.action == "discover":
         print("[INFO] Discover-only complete — no Ansible playbook invoked")

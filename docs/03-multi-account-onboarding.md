@@ -99,7 +99,7 @@ aws sts get-caller-identity --query Account --output text
 
 ```bash
 cd /path/to/lucidity-disk-monitoring/terraform/environments/workload-account
-cp terraform.tfvars.example terraform.tfvars
+cp terraform.tfvars.template terraform.tfvars
 ```
 
 Edit `terraform.tfvars`:
@@ -147,7 +147,7 @@ aws sts assume-role \
 
 **Expected (good):** JSON with `Credentials.AccessKeyId`, `SecretAccessKey`, `SessionToken`.
 
-**Bad:** `AccessDenied` → trust policy principal wrong, or ExternalId mismatch, or wrong account. Mark account status `non_compliant` in `config/accounts.yaml` and fix — do **not** silently ignore.
+**Bad:** `AccessDenied` → trust policy principal wrong, or ExternalId mismatch, or wrong account. Mark account status `non_compliant` in `config/customer-accounts.yaml` and fix — do **not** silently ignore.
 
 ---
 
@@ -155,7 +155,7 @@ aws sts assume-role \
 
 ```bash
 cd /path/to/lucidity-disk-monitoring
-cp config/accounts.yaml.example config/accounts.yaml
+cp config/customer-accounts.template.yaml config/customer-accounts.yaml
 ```
 
 Edit:
@@ -200,17 +200,17 @@ Example using temporary credentials from Step 5 (export the three keys from assu
 cd ansible
 # Ensure inventory region matches Account B region
 ansible-inventory -i inventory/aws_ec2.yml --graph
-ansible-playbook playbooks/enroll.yml -v
-ansible-playbook playbooks/validate-enrollment.yml -v
+ansible-playbook playbooks/enroll-disk-monitoring.yml -v
+ansible-playbook playbooks/validate-agent-on-host.yml -v
 ```
 
 Then:
 
 ```bash
-../scripts/validate_live.sh --instance-id i-IN_ACCOUNT_B --region us-east-1 --profile central
+../scripts/validate-cloudwatch-metrics.sh --instance-id i-IN_ACCOUNT_B --region us-east-1 --profile central
 ```
 
-(If metrics are in Account B, use B credentials / assumed-role session for `validate_live.sh`.)
+(If metrics are in Account B, use B credentials / assumed-role session for `validate-cloudwatch-metrics.sh`.)
 
 **Expected:** `[PASS] End-to-end disk monitoring path is working`
 
@@ -221,8 +221,8 @@ Then:
 With **central** credentials:
 
 ```bash
-cd terraform/environments/multi-account-example
-cp terraform.tfvars.example terraform.tfvars
+cd terraform/environments/central-monitoring-account
+cp terraform.tfvars.template terraform.tfvars
 ```
 
 Set:
@@ -253,8 +253,8 @@ For **each new account**:
 3. Wait 30–60s  
 4. Test `sts assume-role` from central  
 5. Attach instance profile + tags on VMs  
-6. Append role ARN to `config/accounts.yaml` and `workload_role_arns`  
-7. Enroll + `validate_live.sh`  
+6. Append role ARN to `config/customer-accounts.yaml` and `workload_role_arns`  
+7. Enroll + `validate-cloudwatch-metrics.sh`  
 8. Set `status: enrolled` (or `non_compliant` if AssumeRole fails)
 
 Adding Account #101 is this checklist — **not** a new architecture.

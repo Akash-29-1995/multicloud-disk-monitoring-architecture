@@ -18,7 +18,7 @@
   pre_tasks:
     - name: Log playbook start
       ansible.builtin.debug:
-        msg: "[INFO] enroll.yml starting against {{ ansible_play_hosts | length }} host(s)"
+        msg: "[INFO] enroll-disk-monitoring.yml starting against {{ ansible_play_hosts | length }} host(s)"
 
     - name: Fail clearly if host is not SSM-reachable
       ansible.builtin.ping:
@@ -46,5 +46,5 @@
       ansible.builtin.debug:
         msg: >-
           [PASS] Enrollment finished for {{ inventory_hostname }}.
-          Next: ansible-playbook playbooks/validate-enrollment.yml
-          then ../scripts/validate_live.sh --instance-id {{ inventory_hostname }}
+          Next: ansible-playbook playbooks/validate-agent-on-host.yml
+          then ../scripts/validate-cloudwatch-metrics.sh --instance-id {{ inventory_hostname }}

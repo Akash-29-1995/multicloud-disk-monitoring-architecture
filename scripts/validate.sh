@@ -30,13 +30,13 @@ REQUIRED_PATHS=(
   "terraform/modules/monitoring-role/main.tf"
   "terraform/modules/cloudwatch/main.tf"
   "terraform/modules/monitoring-account/main.tf"
-  "terraform/environments/example/main.tf"
-  "ansible/playbooks/enroll.yml"
-  "ansible/playbooks/configure-monitoring.yml"
-  "ansible/playbooks/validate-enrollment.yml"
+  "terraform/environments/single-account-mvp/main.tf"
+  "ansible/playbooks/enroll-disk-monitoring.yml"
+  "ansible/playbooks/reconcile-agent-config.yml"
+  "ansible/playbooks/validate-agent-on-host.yml"
   "ansible/roles/cloudwatch_agent/tasks/main.yml"
   "ansible/roles/cloudwatch_agent/templates/amazon-cloudwatch-agent.json.j2"
-  "ansible/inventory/generated/README.md"
+  "ansible/inventory/orchestrator-output/README.md"
   "cloudwatch/dashboard.json"
   "cloudwatch/alarms.json"
   "docs/00-glossary.md"
@@ -46,17 +46,18 @@ REQUIRED_PATHS=(
   "docs/06-orchestrator-dry-run.md"
   "docs/07-multi-customer-saas-model.md"
   "docs/08-jenkins-thin-trigger.md"
+  "docs/09-repository-map.md"
   "docs/security.md"
   "docs/reliability.md"
   "docs/tradeoffs.md"
-  "config/accounts.yaml.example"
+  "config/customer-accounts.template.yaml"
   "config/monitoring-profiles.yaml"
   "orchestrator/main.py"
   "orchestrator/adapters/aws.py"
   "orchestrator/adapters/gcp.py"
   "orchestrator/adapters/azure.py"
   "jenkins/Jenkinsfile"
-  "scripts/validate_live.sh"
+  "scripts/validate-cloudwatch-metrics.sh"
 )
 
 for p in "${REQUIRED_PATHS[@]}"; do
@@ -92,20 +93,20 @@ fi
 # --- Terraform fmt / validate (example env) ---
 if command -v terraform >/dev/null 2>&1; then
   info "Running terraform fmt -check..."
-  if terraform -chdir="$ROOT/terraform/environments/example" fmt -check -recursive "$ROOT/terraform" >/dev/null 2>&1; then
+  if terraform -chdir="$ROOT/terraform/environments/single-account-mvp" fmt -check -recursive "$ROOT/terraform" >/dev/null 2>&1; then
     pass "terraform fmt -check clean"
   else
     # Auto-fix then re-check message
-    terraform -chdir="$ROOT/terraform/environments/example" fmt -recursive "$ROOT/terraform" >/dev/null 2>&1 || true
+    terraform -chdir="$ROOT/terraform/environments/single-account-mvp" fmt -recursive "$ROOT/terraform" >/dev/null 2>&1 || true
     warn "terraform fmt applied formatting — re-run validate.sh"
     pass "terraform fmt executed"
   fi
 
   info "Initializing terraform (no backend) for validate..."
-  if terraform -chdir="$ROOT/terraform/environments/example" init -backend=false -input=false >/tmp/lucidity-tf-init.log 2>&1; then
+  if terraform -chdir="$ROOT/terraform/environments/single-account-mvp" init -backend=false -input=false >/tmp/lucidity-tf-init.log 2>&1; then
     pass "terraform init -backend=false"
-    if terraform -chdir="$ROOT/terraform/environments/example" validate >/tmp/lucidity-tf-validate.log 2>&1; then
-      pass "terraform validate (example env)"
+    if terraform -chdir="$ROOT/terraform/environments/single-account-mvp" validate >/tmp/lucidity-tf-validate.log 2>&1; then
+      pass "terraform validate (single-account-mvp)"
     else
       fail "terraform validate failed — see /tmp/lucidity-tf-validate.log"
       cat /tmp/lucidity-tf-validate.log || true
@@ -123,7 +124,7 @@ if command -v ansible-playbook >/dev/null 2>&1; then
   pushd "$ROOT/ansible" >/dev/null
   # Avoid aws_ec2 inventory plugin (needs amazon.aws collection + AWS creds)
   export ANSIBLE_INVENTORY_ENABLED="host_list,ini,yaml"
-  for pb in enroll.yml configure-monitoring.yml validate-enrollment.yml; do
+  for pb in enroll-disk-monitoring.yml reconcile-agent-config.yml validate-agent-on-host.yml; do
     if ansible-playbook -i "localhost," -c local --syntax-check "playbooks/$pb" >/tmp/lucidity-ansible-syntax.log 2>&1; then
       pass "ansible syntax-check $pb"
     else
@@ -156,8 +157,8 @@ if command -v python3 >/dev/null 2>&1; then
   if PYTHONPATH="$ROOT" python3 -m orchestrator \
       --cloud aws --customer nike --account 111111111111 \
       --environment prod --region us-east-1 --dry-run \
-      --accounts-file "$ROOT/config/accounts.yaml.example" \
-      --output-dir "$ROOT/ansible/inventory/generated" \
+      --accounts-file "$ROOT/config/customer-accounts.template.yaml" \
+      --output-dir "$ROOT/ansible/inventory/orchestrator-output" \
       >/tmp/lucidity-orch-dryrun.log 2>&1; then
     if grep -q "MODE: DRY RUN" /tmp/lucidity-orch-dryrun.log && grep -q "host_count=2" /tmp/lucidity-orch-dryrun.log; then
       pass "orchestrator dry-run smoke"

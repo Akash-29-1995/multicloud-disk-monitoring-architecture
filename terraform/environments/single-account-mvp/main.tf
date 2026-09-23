@@ -55,10 +55,10 @@ module "cloudwatch" {
   critical_threshold_percent = var.critical_threshold_percent
   min_free_bytes             = var.min_free_bytes
   metric_namespace           = var.metric_namespace
-  create_example_alarms      = var.create_example_alarms
-  example_instance_id        = var.example_instance_id
-  example_fstype             = var.example_fstype
-  example_path               = var.example_path
+  create_instance_alarms     = var.create_instance_alarms
+  monitored_instance_id      = var.monitored_instance_id
+  disk_filesystem_type       = var.disk_filesystem_type
+  disk_mount_path            = var.disk_mount_path
   tags                       = local.tags
 }
 
@@ -70,7 +70,7 @@ module "monitoring_account" {
 }
 
 output "execution_role_arn" {
-  description = "Use this ARN in Ansible / accounts.yaml"
+  description = "Use this ARN in Ansible / customer-accounts.yaml"
   value       = module.monitoring_role.role_arn
 }
 

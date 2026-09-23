@@ -62,15 +62,15 @@ pipeline {
       steps {
         dir('ansible') {
           sh '''
-            INV=$(ls -1t inventory/generated/*.ini 2>/dev/null | head -1)
+            INV=$(ls -1t inventory/orchestrator-output/*.ini 2>/dev/null | head -1)
             if [ -z "$INV" ]; then
               echo "[FAIL] No generated inventory found"
               exit 1
             fi
             echo "[INFO] Using inventory $INV"
-            PLAYBOOK=playbooks/enroll.yml
+            PLAYBOOK=playbooks/enroll-disk-monitoring.yml
             if [ "$ACTION" = "reconcile" ]; then
-              PLAYBOOK=playbooks/configure-monitoring.yml
+              PLAYBOOK=playbooks/reconcile-agent-config.yml
             fi
             ansible-playbook -i "$INV" "$PLAYBOOK" -v
           '''
@@ -81,7 +81,7 @@ pipeline {
 
   post {
     always {
-      archiveArtifacts artifacts: 'ansible/inventory/generated/*', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'ansible/inventory/orchestrator-output/*', allowEmptyArchive: true
     }
   }
 }

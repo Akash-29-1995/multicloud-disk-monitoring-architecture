@@ -3,8 +3,8 @@
 # Polls CloudWatch until disk metrics appear (wait + retry), then PASS/FAIL.
 #
 # Usage:
-#   ./scripts/validate_live.sh --instance-id i-0123456789abcdef0
-#   ./scripts/validate_live.sh --instance-id i-0123 --region us-east-1 --timeout 300
+#   ./scripts/validate-cloudwatch-metrics.sh --instance-id i-0123456789abcdef0
+#   ./scripts/validate-cloudwatch-metrics.sh --instance-id i-0123 --region us-east-1 --timeout 300
 
 set -euo pipefail
 
@@ -126,4 +126,4 @@ while [[ $(date +%s) -lt $DEADLINE ]]; do
   sleep "$INTERVAL"
 done
 
-fail "Timed out after ${TIMEOUT}s waiting for ${METRIC} on ${INSTANCE_ID}. Re-run enroll.yml, confirm instance profile has CloudWatchAgentServerPolicy, then see docs/05-troubleshooting.md#metrics-missing"
+fail "Timed out after ${TIMEOUT}s waiting for ${METRIC} on ${INSTANCE_ID}. Re-run enroll-disk-monitoring.yml, confirm instance profile has CloudWatchAgentServerPolicy, then see docs/05-troubleshooting.md#metrics-missing"

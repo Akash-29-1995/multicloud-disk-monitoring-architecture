@@ -24,4 +24,4 @@ Not in MVP. Future: use the Windows CloudWatch Agent MSI + WinRM/SSM documents w
 
 ## Variables
 
-See `defaults/main.yml` and `group_vars/all.yml.example`.
+See `defaults/main.yml` and `group_vars/all.yml.template`.

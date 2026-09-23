@@ -16,7 +16,7 @@
   pre_tasks:
     - name: Log reconcile start
       ansible.builtin.debug:
-        msg: "[INFO] configure-monitoring.yml (reconcile) on {{ inventory_hostname }}"
+        msg: "[INFO] reconcile-agent-config.yml (reconcile) on {{ inventory_hostname }}"
 
   roles:
     - role: cloudwatch_agent

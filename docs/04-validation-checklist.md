@@ -72,7 +72,7 @@ aws ec2 describe-instances --instance-ids i-YOUR_ID \
 
 ```bash
 cd ansible
-ansible-playbook playbooks/validate-enrollment.yml -v
+ansible-playbook playbooks/validate-agent-on-host.yml -v
 ```
 
 - [ ] Expected lines include:
@@ -85,7 +85,7 @@ ansible-playbook playbooks/validate-enrollment.yml -v
 ## G. Live CloudWatch metrics (wait/retry)
 
 ```bash
-./scripts/validate_live.sh --instance-id i-YOUR_ID --region YOUR_REGION
+./scripts/validate-cloudwatch-metrics.sh --instance-id i-YOUR_ID --region YOUR_REGION
 ```
 
 - [ ] Expected: `[PASS] End-to-end disk monitoring path is working` with a numeric %
@@ -115,8 +115,8 @@ aws sts assume-role \
 ```
 
 - [ ] Expected: temporary credentials JSON  
-- [ ] Expected: `validate_live.sh` PASS for a VM **in the workload account**  
-- [ ] Expected: `config/accounts.yaml` status `enrolled` (not blank / not silently missing)
+- [ ] Expected: `validate-cloudwatch-metrics.sh` PASS for a VM **in the workload account**  
+- [ ] Expected: `config/customer-accounts.yaml` status `enrolled` (not blank / not silently missing)
 
 ---
 
@@ -124,8 +124,8 @@ aws sts assume-role \
 
 1. Stop agent on a test VM: `sudo systemctl stop amazon-cloudwatch-agent`  
 2. Wait until `disk-agent-missing-*` goes ALARM (or skip wait)  
-3. Re-run: `ansible-playbook playbooks/configure-monitoring.yml`  
-4. Re-run: `./scripts/validate_live.sh --instance-id i-YOUR_ID`  
+3. Re-run: `ansible-playbook playbooks/reconcile-agent-config.yml`  
+4. Re-run: `./scripts/validate-cloudwatch-metrics.sh --instance-id i-YOUR_ID`  
 
 - [ ] Expected: service active again + metrics resume  
 

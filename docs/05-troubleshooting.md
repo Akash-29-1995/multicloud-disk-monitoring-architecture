@@ -41,13 +41,13 @@ Expected: `Online`
 
 | Cause | Fix |
 |-------|-----|
-| Agent not installed/running | `ansible-playbook playbooks/configure-monitoring.yml` |
+| Agent not installed/running | `ansible-playbook playbooks/reconcile-agent-config.yml` |
 | Instance profile missing `CloudWatchAgentServerPolicy` | Re-attach profile from Terraform |
 | Wrong region in console | Open CloudWatch in the instance region |
-| Need more time | Wait 2–3 minutes; `validate_live.sh` already polls |
-| fstype dimension mismatch on alarms | Set `example_fstype` to `ext4` or `xfs` to match agent |
+| Need more time | Wait 2–3 minutes; `validate-cloudwatch-metrics.sh` already polls |
+| fstype dimension mismatch on alarms | Set `disk_filesystem_type` to `ext4` or `xfs` to match agent |
 
-**Validate:** `./scripts/validate_live.sh --instance-id i-YOUR_ID`
+**Validate:** `./scripts/validate-cloudwatch-metrics.sh --instance-id i-YOUR_ID`
 
 ---
 
@@ -60,7 +60,7 @@ Expected: `Online`
 | Applying Terraform in wrong account | `get-caller-identity` must match target account |
 | IAM not propagated | Wait 60s and retry |
 
-Mark account `non_compliant` in `config/accounts.yaml` until fixed.
+Mark account `non_compliant` in `config/customer-accounts.yaml` until fixed.
 
 ---
 
@@ -97,7 +97,7 @@ Confirm SNS subscription in your inbox. Without confirmation, no emails.
 That is intentional for **missing metrics**. Heal:
 
 ```bash
-cd ansible && ansible-playbook playbooks/configure-monitoring.yml
+cd ansible && ansible-playbook playbooks/reconcile-agent-config.yml
 ```
 
-Then re-validate with `validate_live.sh`.
+Then re-validate with `validate-cloudwatch-metrics.sh`.

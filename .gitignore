@@ -7,7 +7,7 @@
 **/crash.*.log
 # Keep .terraform.lock.hcl committed for reproducible provider versions
 **/terraform.tfvars
-!**/*.tfvars.example
+!**/*.tfvars.template
 override.tf
 override.tf.json
 *_override.tf
@@ -20,7 +20,7 @@ ansible/logs/*.log
 .vault_pass
 .vault_pass.txt
 ansible/group_vars/all.yml
-!ansible/group_vars/all.yml.example
+!ansible/group_vars/all.yml.template
 
 # Secrets & credentials (never commit)
 .env
@@ -34,8 +34,9 @@ aws_credentials
 secrets/
 **/secrets.yml
 **/vault.yml
+config/customer-accounts.yaml
+!config/customer-accounts.template.yaml
 config/accounts.yaml
-!config/accounts.yaml.example
 
 # OS / editor
 .DS_Store
@@ -54,8 +55,8 @@ venv/
 scripts/output/
 *.out
 
-# Orchestrator generated inventory (keep folder README)
-ansible/inventory/generated/*
-!ansible/inventory/generated/README.md
+# Orchestrator-generated inventory (keep folder README only)
+ansible/inventory/orchestrator-output/*
+!ansible/inventory/orchestrator-output/README.md
 orchestrator/**/__pycache__/
 .pytest_cache/

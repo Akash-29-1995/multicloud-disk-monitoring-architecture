@@ -22,7 +22,7 @@ Account discoverable → EC2 discovery → enrollment
 
 ### MVP
 
-Static list: `config/accounts.yaml.example` → `accounts.yaml`.
+Static list: `config/customer-accounts.template.yaml` → `accounts.yaml`.
 
 ### Production
 
@@ -59,7 +59,7 @@ No manual IP inventory.
 |-----------|--------|
 | AssumeRole denied | `non_compliant` — visible, not silent |
 | SSM not Online | Block enrollment with clear FAIL |
-| Metrics missing after timeout | FAIL from `validate_live.sh` + agent-missing alarm |
+| Metrics missing after timeout | FAIL from `validate-cloudwatch-metrics.sh` + agent-missing alarm |
 
 ## Orchestrator path
 

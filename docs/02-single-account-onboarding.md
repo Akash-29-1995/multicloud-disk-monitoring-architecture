@@ -34,15 +34,15 @@ Read [00-glossary.md](00-glossary.md) if any word is unclear.
 ## Step 2 — Create Terraform variables file
 
 ```bash
-cd terraform/environments/example
-cp terraform.tfvars.example terraform.tfvars
+cd terraform/environments/single-account-mvp
+cp terraform.tfvars.template terraform.tfvars
 ```
 
 Edit `terraform.tfvars` with a text editor:
 
 1. Set `aws_region` to your region (example: `us-east-1`)
 2. Set `alarm_email` to **your** email
-3. Leave `example_instance_id = ""` for the first apply
+3. Leave `monitored_instance_id = ""` for the first apply
 
 **Security:** `terraform.tfvars` is gitignored. Never commit it.
 
@@ -129,7 +129,7 @@ aws ec2 describe-tags --filters "Name=resource-id,Values=i-YOUR_ID"
 
 ```bash
 cd ../../../ansible
-cp group_vars/all.yml.example group_vars/all.yml
+cp group_vars/all.yml.template group_vars/all.yml
 ```
 
 Edit `group_vars/all.yml`:
@@ -162,7 +162,7 @@ ansible-inventory -i inventory/aws_ec2.yml --graph
 ## Step 9 — Enroll (install + configure CloudWatch Agent)
 
 ```bash
-ansible-playbook playbooks/enroll.yml -v
+ansible-playbook playbooks/enroll-disk-monitoring.yml -v
 ```
 
 Watch for lines:
@@ -180,7 +180,7 @@ Watch for lines:
 ## Step 10 — Host-level validation
 
 ```bash
-ansible-playbook playbooks/validate-enrollment.yml -v
+ansible-playbook playbooks/validate-agent-on-host.yml -v
 ```
 
 **Expected:** all `[PASS]` asserts.
@@ -191,7 +191,7 @@ ansible-playbook playbooks/validate-enrollment.yml -v
 
 ```bash
 cd ..
-./scripts/validate_live.sh --instance-id i-YOUR_ID --region us-east-1
+./scripts/validate-cloudwatch-metrics.sh --instance-id i-YOUR_ID --region us-east-1
 ```
 
 This script **waits and retries** for up to 5 minutes until a datapoint exists.
@@ -209,14 +209,14 @@ This script **waits and retries** for up to 5 minutes until a datapoint exists.
 ## Step 12 — Create alarms for your instance (second Terraform apply)
 
 ```bash
-cd terraform/environments/example
+cd terraform/environments/single-account-mvp
 ```
 
 Edit `terraform.tfvars`:
 
 ```hcl
-example_instance_id = "i-YOUR_ID"
-example_fstype      = "xfs"   # use "ext4" on many Ubuntu images
+monitored_instance_id = "i-YOUR_ID"
+disk_filesystem_type      = "xfs"   # use "ext4" on many Ubuntu images
 ```
 
 ```bash
@@ -239,15 +239,15 @@ AWS Console → CloudWatch → Dashboards → `lucidity-disk-monitoring`
 
 - [ ] Terraform applied  
 - [ ] Instance tagged + SSM Online  
-- [ ] `enroll.yml` shows PASS  
-- [ ] `validate_live.sh` shows PASS with a % value  
+- [ ] `enroll-disk-monitoring.yml` shows PASS  
+- [ ] `validate-cloudwatch-metrics.sh` shows PASS with a % value  
 - [ ] Dashboard visible  
 - [ ] Alarms exist  
 
 **Auto-heal reminder:** if the agent-missing alarm fires later, re-run:
 
 ```bash
-cd ansible && ansible-playbook playbooks/configure-monitoring.yml
+cd ansible && ansible-playbook playbooks/reconcile-agent-config.yml
 ```
 
 Next (multiple AWS accounts): [03-multi-account-onboarding.md](03-multi-account-onboarding.md)

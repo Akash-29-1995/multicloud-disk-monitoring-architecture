@@ -1,44 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640">
-  <rect width="960" height="640" fill="#0f172a"/>
-  <text x="480" y="36" text-anchor="middle" fill="#e2e8f0" font-family="Helvetica,Arial,sans-serif" font-size="20" font-weight="bold">Lucidity Disk Monitoring Architecture</text>
-  <text x="480" y="58" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="12">Ansible enrolls · CloudWatch observes · SSM connects · IAM crosses accounts</text>
-
-  <rect x="280" y="80" width="400" height="44" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
-  <text x="480" y="107" text-anchor="middle" fill="#7dd3fc" font-family="Helvetica,Arial,sans-serif" font-size="14">AWS Organization</text>
-
-  <rect x="80" y="160" width="160" height="70" rx="6" fill="#1e293b" stroke="#64748b"/>
-  <text x="160" y="190" text-anchor="middle" fill="#e2e8f0" font-family="Helvetica,Arial,sans-serif" font-size="13">Account A</text>
-  <text x="160" y="210" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="11">EC2 + CW Agent</text>
-
-  <rect x="400" y="160" width="160" height="70" rx="6" fill="#1e293b" stroke="#64748b"/>
-  <text x="480" y="190" text-anchor="middle" fill="#e2e8f0" font-family="Helvetica,Arial,sans-serif" font-size="13">Account B</text>
-  <text x="480" y="210" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="11">EC2 + CW Agent</text>
-
-  <rect x="720" y="160" width="160" height="70" rx="6" fill="#1e293b" stroke="#64748b"/>
-  <text x="800" y="190" text-anchor="middle" fill="#e2e8f0" font-family="Helvetica,Arial,sans-serif" font-size="13">Account N</text>
-  <text x="800" y="210" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="11">EC2 + CW Agent</text>
-
-  <line x1="160" y1="230" x2="160" y2="280" stroke="#64748b"/>
-  <line x1="480" y1="230" x2="480" y2="280" stroke="#64748b"/>
-  <line x1="800" y1="230" x2="800" y2="280" stroke="#64748b"/>
-  <line x1="160" y1="280" x2="800" y2="280" stroke="#64748b"/>
-  <line x1="480" y1="280" x2="480" y2="310" stroke="#38bdf8" stroke-width="2"/>
-
-  <rect x="300" y="310" width="360" height="50" rx="6" fill="#0ea5e9" opacity="0.2" stroke="#38bdf8"/>
-  <text x="480" y="340" text-anchor="middle" fill="#7dd3fc" font-family="Helvetica,Arial,sans-serif" font-size="13">Cross-account IAM (STS AssumeRole)</text>
-
-  <rect x="200" y="390" width="200" height="70" rx="6" fill="#1e293b" stroke="#a78bfa"/>
-  <text x="300" y="420" text-anchor="middle" fill="#c4b5fd" font-family="Helvetica,Arial,sans-serif" font-size="13">Ansible (control)</text>
-  <text x="300" y="440" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="11">enroll / reconcile</text>
-
-  <rect x="560" y="390" width="200" height="70" rx="6" fill="#1e293b" stroke="#34d399"/>
-  <text x="660" y="420" text-anchor="middle" fill="#6ee7b7" font-family="Helvetica,Arial,sans-serif" font-size="13">CloudWatch (data)</text>
-  <text x="660" y="440" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="11">metrics / dash / alarms</text>
-
-  <text x="300" y="490" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="11">via SSM</text>
-  <text x="660" y="490" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="11">SNS / incident</text>
-
-  <rect x="280" y="520" width="400" height="80" rx="6" fill="#1e293b" stroke="#fbbf24"/>
-  <text x="480" y="550" text-anchor="middle" fill="#fde68a" font-family="Helvetica,Arial,sans-serif" font-size="13">Failure isolation</text>
-  <text x="480" y="575" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="11">Ansible down ’ metrics continue · Agent down ’ missing-metric alarm ’ reconcile</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="780" viewBox="0 0 1100 780">
+  <rect width="1100" height="780" fill="#0b1220"/>
+  <text x="550" y="36" text-anchor="middle" fill="#f8fafc" font-family="Helvetica,Arial,sans-serif" font-size="22" font-weight="bold">Lucidity Disk Monitoring â€” Complete Flow</text>
+  <text x="550" y="58" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="13">Trigger â†’ Discover â†’ Enroll â†’ Observe continuously</text>
+  <rect x="40" y="90" width="220" height="80" rx="10" fill="#152033" stroke="#fbbf24" stroke-width="2"/>
+  <text x="150" y="125" text-anchor="middle" fill="#f1f5f9" font-family="Helvetica,Arial,sans-serif" font-size="14">1. Trigger</text>
+  <text x="150" y="145" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="12">CLI or Jenkins params</text>
+  <rect x="300" y="90" width="260" height="80" rx="10" fill="#152033" stroke="#a78bfa" stroke-width="2"/>
+  <text x="430" y="125" text-anchor="middle" fill="#f1f5f9" font-family="Helvetica,Arial,sans-serif" font-size="14">2. Orchestrator</text>
+  <text x="430" y="145" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="12">customer / account / env</text>
+  <rect x="600" y="90" width="260" height="80" rx="10" fill="#152033" stroke="#38bdf8" stroke-width="2"/>
+  <text x="730" y="125" text-anchor="middle" fill="#f1f5f9" font-family="Helvetica,Arial,sans-serif" font-size="14">3. AWS Adapter</text>
+  <text x="730" y="145" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="12">AssumeRole + EC2 API</text>
+  <rect x="900" y="90" width="160" height="80" rx="10" fill="#152033" stroke="#38bdf8" stroke-width="2"/>
+  <text x="980" y="125" text-anchor="middle" fill="#f1f5f9" font-family="Helvetica,Arial,sans-serif" font-size="14">4. Inventory</text>
+  <text x="980" y="145" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="11">orchestrator-output/</text>
+  <rect x="200" y="230" width="280" height="90" rx="10" fill="#152033" stroke="#c084fc" stroke-width="2"/>
+  <text x="340" y="270" text-anchor="middle" fill="#f1f5f9" font-family="Helvetica,Arial,sans-serif" font-size="14">5. Ansible enroll-disk-monitoring</text>
+  <text x="340" y="290" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="12">idempotent agent setup</text>
+  <rect x="520" y="230" width="280" height="90" rx="10" fill="#152033" stroke="#22d3ee" stroke-width="2"/>
+  <text x="660" y="270" text-anchor="middle" fill="#f1f5f9" font-family="Helvetica,Arial,sans-serif" font-size="14">6. AWS Systems Manager</text>
+  <text x="660" y="290" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="12">no SSH keys</text>
+  <rect x="840" y="230" width="220" height="90" rx="10" fill="#152033" stroke="#34d399" stroke-width="2"/>
+  <text x="950" y="270" text-anchor="middle" fill="#f1f5f9" font-family="Helvetica,Arial,sans-serif" font-size="14">7. CloudWatch Agent</text>
+  <text x="950" y="290" text-anchor="middle" fill="#94a3b8" font-family="Helvetica,Arial,sans-serif" font-size="12">on each EC2</text>
+  <rect x="200" y="390" width="700" height="100" rx="10" fill="#064e3b" stroke="#34d399" stroke-width="2"/>
+  <text x="550" y="430" text-anchor="middle" fill="#ecfdf5" font-family="Helvetica,Arial,sans-serif" font-size="15">8. Continuous observation (data plane)</text>
+  <text x="550" y="455" text-anchor="middle" fill="#a7f3d0" font-family="Helvetica,Arial,sans-serif" font-size="12">disk metrics â†’ CloudWatch â†’ Dashboard + Alarms â†’ SNS</text>
+  <rect x="200" y="540" width="700" height="140" rx="10" fill="#451a03" stroke="#fbbf24" stroke-width="2"/>
+  <text x="550" y="595" text-anchor="middle" fill="#fef3c7" font-family="Helvetica,Arial,sans-serif" font-size="15">Failure isolation</text>
+  <text x="550" y="625" text-anchor="middle" fill="#fde68a" font-family="Helvetica,Arial,sans-serif" font-size="13">Jenkins / Orchestrator / Ansible DOWN  â†’  metrics KEEP flowing if agent is healthy</text>
+  <text x="550" y="750" text-anchor="middle" fill="#cbd5e1" font-family="Helvetica,Arial,sans-serif" font-size="13">Control plane sets up once Â· Data plane runs forever</text>
 </svg>

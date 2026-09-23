@@ -72,7 +72,7 @@ def test_aws_dry_run_discover_and_normalize(tmp_path):
 def test_resolve_account_from_example():
     from orchestrator.validators.params import load_accounts_registry
 
-    reg = load_accounts_registry(ROOT / "config" / "accounts.yaml.example")
+    reg = load_accounts_registry(ROOT / "config" / "customer-accounts.template.yaml")
     acct = resolve_account(
         reg,
         customer_id="nike",
@@ -100,7 +100,7 @@ def test_cli_dry_run(tmp_path):
             "us-east-1",
             "--dry-run",
             "--accounts-file",
-            str(ROOT / "config" / "accounts.yaml.example"),
+            str(ROOT / "config" / "customer-accounts.template.yaml"),
             "--output-dir",
             str(out),
         ]

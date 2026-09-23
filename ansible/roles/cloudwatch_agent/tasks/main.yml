@@ -82,4 +82,4 @@
     msg: >-
       [PASS] Enrollment complete for {{ inventory_hostname }}.
       Metrics publish to CloudWatch namespace {{ metric_namespace }}.
-      Allow up to {{ collection_interval_seconds * 3 }}s then run validate-enrollment / validate_live.sh
+      Allow up to {{ collection_interval_seconds * 3 }}s then run validate-agent-on-host / validate-cloudwatch-metrics.sh

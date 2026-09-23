@@ -28,3 +28,7 @@ Read this once before onboarding. Words below are used everywhere in this repo.
 ## The one sentence to remember
 
 > **Ansible sets up monitoring. CloudWatch does the monitoring. Jenkins/Orchestrator only trigger setup.**
+
+If Ansible or Jenkins is stopped, disk metrics should **keep flowing** as long as the agent on the VM is healthy.
+
+**Next:** [09-repository-map.md](09-repository-map.md) · [architecture overview](../architecture/architecture.md)

@@ -58,7 +58,7 @@ Alternative “default = monitored / explicit exemption” is valid for single-e
 
 ## Account registry
 
-See `config/accounts.yaml.example`. Copy to `config/accounts.yaml`.
+See `config/customer-accounts.template.yaml`. Copy to `config/customer-accounts.yaml`.
 
 Statuses:
 
