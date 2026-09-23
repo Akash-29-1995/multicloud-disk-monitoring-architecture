@@ -1,0 +1,35 @@
+---
+# Dynamic EC2 inventory — NO static IPs.
+# Discovers instances tagged for monitoring and reachable via SSM.
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+# Override region: ANSIBLE_AWS_EC2_REGION or edit this list / use compose later.
+
+filters:
+  instance-state-name: running
+  tag:Monitoring: enabled
+
+hostnames:
+  - instance-id
+  - private-ip-address
+  - tag:Name
+
+compose:
+  ansible_host: instance_id
+  # SSM connection — no SSH keys. Set ansible_aws_ssm_bucket_name in group_vars/all.yml
+  ansible_connection: "'aws_ssm'"
+  ansible_aws_ssm_region: placement.region
+  ansible_aws_ssm_instance_id: instance_id
+
+keyed_groups:
+  - key: tags.Environment
+    prefix: env
+  - key: tags.MonitoringProfile
+    prefix: profile
+  - key: placement.region
+    prefix: region
+
+leading_separator: false
+
+# Prefer SSM-managed hosts; non-managed will fail with a clear error during enroll

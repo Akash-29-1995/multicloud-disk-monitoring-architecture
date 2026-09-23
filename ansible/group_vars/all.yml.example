@@ -1,0 +1,36 @@
+---
+# Copy to group_vars/all.yml (optional) or export as extra-vars.
+# Never commit secrets. External IDs belong in CI secrets / SSO — not git.
+
+metric_namespace: CWAgent
+collection_interval_seconds: 60
+
+# Dual thresholds (also set in Terraform alarms — keep in sync)
+disk_warning_percent: 80
+disk_critical_percent: 90
+disk_min_free_bytes: 5368709120
+
+# Auto-heal / retry defaults
+agent_install_retries: 5
+agent_install_delay_seconds: 15
+service_wait_retries: 12
+service_wait_delay_seconds: 5
+
+# Bounded execution at scale
+serial_batch_size: 50
+max_fail_percentage: 25
+
+# AWS
+aws_region: us-east-1
+
+# REQUIRED for ansible aws_ssm connection plugin (create bucket in prerequisites)
+ansible_aws_ssm_bucket_name: "lucidity-ansible-ssm-REPLACE_ACCOUNT_REPLACE_REGION"
+ansible_aws_ssm_region: "{{ aws_region }}"
+
+# Optional: role to assume for multi-account (leave empty for single-account MVP)
+# assume_role_arn: "arn:aws:iam::222222222222:role/DiskMonitoringExecutionRole"
+# assume_role_external_id: ""
+
+# CloudWatch Agent package source
+cw_agent_package_url_amazon_linux: "https://amazoncloudwatch-agent.s3.amazonaws.com/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm"
+cw_agent_package_url_ubuntu: "https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb"

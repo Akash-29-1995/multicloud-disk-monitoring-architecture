@@ -1,0 +1,10 @@
+# Apply with credentials for the WORKLOAD account.
+
+aws_region = "us-east-1"
+
+trusted_principal_arns = [
+  "arn:aws:iam::111111111111:role/LucidityMonitoringAdmin"
+]
+
+# openssl rand -hex 16 — store outside git
+external_id = ""

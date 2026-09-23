@@ -1,0 +1,4 @@
+# Runtime deps for live AWS orchestration. Dry-run works with PyYAML alone.
+boto3>=1.28.0
+PyYAML>=6.0
+pytest>=7.0.0

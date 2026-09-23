@@ -1,0 +1,14 @@
+# Multi-account central tfvars example — copy to terraform.tfvars (gitignored)
+
+aws_region = "us-east-1"
+
+central_management_principal_arn = "arn:aws:iam::111111111111:role/LucidityMonitoringAdmin"
+
+external_id = ""
+
+workload_role_arns = [
+  # "arn:aws:iam::222222222222:role/DiskMonitoringExecutionRole",
+  # "arn:aws:iam::333333333333:role/DiskMonitoringExecutionRole"
+]
+
+alarm_email = "you@example.com"

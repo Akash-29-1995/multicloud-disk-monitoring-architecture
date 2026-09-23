@@ -1,0 +1,23 @@
+# Shared monitoring profiles — used by orchestrator, Ansible group_vars, and Terraform thresholds.
+# Keep these values in sync when you change alert policy.
+
+profiles:
+  standard:
+    description: Default Lucidity disk monitoring profile
+    disk:
+      warning_percent: 80
+      critical_percent: 90
+      minimum_free_gb: 5
+    collection_interval_seconds: 60
+    metric_namespace: CWAgent
+
+  aggressive:
+    description: Tighter thresholds for critical data volumes
+    disk:
+      warning_percent: 70
+      critical_percent: 85
+      minimum_free_gb: 10
+    collection_interval_seconds: 60
+    metric_namespace: CWAgent
+
+default_profile: standard

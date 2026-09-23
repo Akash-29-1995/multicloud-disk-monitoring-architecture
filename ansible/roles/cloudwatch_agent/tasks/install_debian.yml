@@ -1,0 +1,33 @@
+---
+- name: Check whether CloudWatch Agent package is installed (Debian family)
+  ansible.builtin.command: dpkg -s amazon-cloudwatch-agent
+  register: cw_deb
+  changed_when: false
+  failed_when: false
+
+- name: Download CloudWatch Agent DEB
+  ansible.builtin.get_url:
+    url: "{{ cw_agent_package_url_ubuntu }}"
+    dest: /tmp/amazon-cloudwatch-agent.deb
+    mode: "0644"
+  when: cw_deb.rc != 0
+  retries: "{{ agent_install_retries }}"
+  delay: "{{ agent_install_delay_seconds }}"
+  register: cw_deb_download
+  until: cw_deb_download is succeeded
+
+- name: Install CloudWatch Agent DEB
+  ansible.builtin.apt:
+    deb: /tmp/amazon-cloudwatch-agent.deb
+    state: present
+  when: cw_deb.rc != 0
+  retries: "{{ agent_install_retries }}"
+  delay: "{{ agent_install_delay_seconds }}"
+  register: cw_deb_install
+  until: cw_deb_install is succeeded
+
+- name: Log DEB install result
+  ansible.builtin.debug:
+    msg: >-
+      {{ '[PASS] CloudWatch Agent already installed' if cw_deb.rc == 0
+         else '[PASS] CloudWatch Agent DEB installed' }}

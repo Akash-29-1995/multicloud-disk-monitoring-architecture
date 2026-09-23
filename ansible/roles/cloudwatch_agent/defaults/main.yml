@@ -1,0 +1,23 @@
+---
+# defaults for role cloudwatch_agent
+cw_agent_config_path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+cw_agent_ctl: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
+cw_agent_service: amazon-cloudwatch-agent
+
+metric_namespace: CWAgent
+collection_interval_seconds: 60
+
+# Metrics: percentage + absolute free; dimensions include instance/fs/mount
+collect_disk_used_percent: true
+collect_disk_free: true
+disk_devices_ignore: ["ram*", "loop*", "fd*", "sr*", "dm-*"]
+disk_paths:
+  - /
+
+agent_install_retries: 5
+agent_install_delay_seconds: 15
+service_wait_retries: 12
+service_wait_delay_seconds: 5
+
+cw_agent_package_url_amazon_linux: "https://amazoncloudwatch-agent.s3.amazonaws.com/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm"
+cw_agent_package_url_ubuntu: "https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb"

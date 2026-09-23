@@ -1,0 +1,35 @@
+{
+  "agent": {
+    "metrics_collection_interval": {{ collection_interval_seconds }},
+    "run_as_user": "root"
+  },
+  "metrics": {
+    "namespace": "{{ metric_namespace }}",
+    "append_dimensions": {
+      "InstanceId": "$${aws:InstanceId}",
+      "ImageId": "$${aws:ImageId}",
+      "InstanceType": "$${aws:InstanceType}"
+    },
+    "metrics_collected": {
+      "disk": {
+        "measurement": [
+{% if collect_disk_used_percent %}
+          "used_percent"{% if collect_disk_free %},{% endif %}
+{% endif %}
+{% if collect_disk_free %}
+          "free"
+{% endif %}
+        ],
+        "metrics_collection_interval": {{ collection_interval_seconds }},
+        "resources": {{ disk_paths | to_json }},
+        "ignore_file_system_types": [
+          "sysfs",
+          "devtmpfs",
+          "tmpfs",
+          "overlay",
+          "nsfs"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "Alarms": [
+    {
+      "AlarmName": "TEMPLATE-disk-used-warning",
+      "AlarmDescription": "Warning when disk_used_percent >= 80. Replace dimensions after metrics appear.",
+      "Namespace": "CWAgent",
+      "MetricName": "disk_used_percent",
+      "Statistic": "Average",
+      "Period": 300,
+      "EvaluationPeriods": 2,
+      "DatapointsToAlarm": 2,
+      "Threshold": 80,
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "TreatMissingData": "notBreaching",
+      "Dimensions": [
+        { "Name": "InstanceId", "Value": "i-REPLACE_ME" },
+        { "Name": "path", "Value": "/" },
+        { "Name": "fstype", "Value": "xfs" }
+      ]
+    },
+    {
+      "AlarmName": "TEMPLATE-disk-used-critical",
+      "AlarmDescription": "Critical when disk_used_percent >= 90",
+      "Namespace": "CWAgent",
+      "MetricName": "disk_used_percent",
+      "Statistic": "Average",
+      "Period": 300,
+      "EvaluationPeriods": 1,
+      "Threshold": 90,
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "TreatMissingData": "notBreaching",
+      "Dimensions": [
+        { "Name": "InstanceId", "Value": "i-REPLACE_ME" },
+        { "Name": "path", "Value": "/" },
+        { "Name": "fstype", "Value": "xfs" }
+      ]
+    },
+    {
+      "AlarmName": "TEMPLATE-disk-free-low",
+      "AlarmDescription": "Absolute free space below 5 GiB",
+      "Namespace": "CWAgent",
+      "MetricName": "disk_free",
+      "Statistic": "Average",
+      "Period": 300,
+      "EvaluationPeriods": 2,
+      "Threshold": 5368709120,
+      "ComparisonOperator": "LessThanThreshold",
+      "TreatMissingData": "notBreaching",
+      "Dimensions": [
+        { "Name": "InstanceId", "Value": "i-REPLACE_ME" },
+        { "Name": "path", "Value": "/" },
+        { "Name": "fstype", "Value": "xfs" }
+      ]
+    },
+    {
+      "AlarmName": "TEMPLATE-disk-agent-missing",
+      "AlarmDescription": "No metric samples — re-run Ansible enroll (auto-heal path)",
+      "Namespace": "CWAgent",
+      "MetricName": "disk_used_percent",
+      "Statistic": "SampleCount",
+      "Period": 300,
+      "EvaluationPeriods": 3,
+      "Threshold": 1,
+      "ComparisonOperator": "LessThanThreshold",
+      "TreatMissingData": "breaching",
+      "Dimensions": [
+        { "Name": "InstanceId", "Value": "i-REPLACE_ME" },
+        { "Name": "path", "Value": "/" },
+        { "Name": "fstype", "Value": "xfs" }
+      ]
+    }
+  ],
+  "Notes": "Prefer creating alarms via terraform/modules/cloudwatch. This JSON is a portable reference for reviewers and multi-account replication."
+}

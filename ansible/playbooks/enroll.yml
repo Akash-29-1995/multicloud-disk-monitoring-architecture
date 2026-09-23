@@ -1,0 +1,50 @@
+---
+# Enroll tagged EC2 instances: install + configure CloudWatch Agent via SSM.
+# Ansible = desired state. CloudWatch Agent = continuous observation.
+
+- name: Enroll disk monitoring
+  hosts: all
+  become: true
+  gather_facts: true
+
+  # Bounded execution — do not stampede thousands of hosts
+  serial: "{{ serial_batch_size | default(50) }}"
+  max_fail_percentage: "{{ max_fail_percentage | default(25) }}"
+
+  vars:
+    ansible_connection: aws_ssm
+    ansible_aws_ssm_region: "{{ aws_region | default('us-east-1') }}"
+
+  pre_tasks:
+    - name: Log playbook start
+      ansible.builtin.debug:
+        msg: "[INFO] enroll.yml starting against {{ ansible_play_hosts | length }} host(s)"
+
+    - name: Fail clearly if host is not SSM-reachable
+      ansible.builtin.ping:
+      register: ssm_ping
+      retries: 3
+      delay: 10
+      until: ssm_ping is succeeded
+      ignore_errors: true
+
+    - name: Assert SSM connectivity
+      ansible.builtin.assert:
+        that:
+          - ssm_ping is succeeded
+        fail_msg: >-
+          [FAIL] {{ inventory_hostname }} is not reachable via SSM.
+          Ensure SSM Agent is running, instance profile has AmazonSSMManagedInstanceCore,
+          and private subnets have VPC endpoints or NAT. See docs/05-troubleshooting.md#ssm
+        success_msg: "[PASS] SSM connectivity OK for {{ inventory_hostname }}"
+
+  roles:
+    - role: cloudwatch_agent
+
+  post_tasks:
+    - name: Enrollment summary
+      ansible.builtin.debug:
+        msg: >-
+          [PASS] Enrollment finished for {{ inventory_hostname }}.
+          Next: ansible-playbook playbooks/validate-enrollment.yml
+          then ../scripts/validate_live.sh --instance-id {{ inventory_hostname }}

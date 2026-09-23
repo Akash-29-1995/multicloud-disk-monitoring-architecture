@@ -1,0 +1,62 @@
+---
+# Output-based validation — proves enrollment state on the host.
+# Does not replace CloudWatch metric validation (see scripts/validate_live.sh).
+
+- name: Validate disk monitoring enrollment
+  hosts: all
+  become: true
+  gather_facts: true
+  serial: "{{ serial_batch_size | default(50) }}"
+
+  vars:
+    ansible_connection: aws_ssm
+    ansible_aws_ssm_region: "{{ aws_region | default('us-east-1') }}"
+    cw_agent_service: amazon-cloudwatch-agent
+    cw_agent_config_path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+    metric_namespace: CWAgent
+
+  tasks:
+    - name: Check agent package presence
+      ansible.builtin.command: "{{ 'rpm -q amazon-cloudwatch-agent' if ansible_os_family == 'RedHat' else 'dpkg -s amazon-cloudwatch-agent' }}"
+      register: pkg
+      changed_when: false
+      failed_when: false
+
+    - name: Assert package installed
+      ansible.builtin.assert:
+        that:
+          - pkg.rc == 0
+        fail_msg: "[FAIL] CloudWatch Agent package missing on {{ inventory_hostname }}"
+        success_msg: "[PASS] CloudWatch Agent package present"
+
+    - name: Check service active
+      ansible.builtin.command: systemctl is-active {{ cw_agent_service }}
+      register: svc
+      changed_when: false
+      failed_when: false
+
+    - name: Assert service active
+      ansible.builtin.assert:
+        that:
+          - svc.stdout == 'active'
+        fail_msg: "[FAIL] Agent service not active — run playbooks/configure-monitoring.yml"
+        success_msg: "[PASS] Agent service active"
+
+    - name: Slurp config
+      ansible.builtin.slurp:
+        src: "{{ cw_agent_config_path }}"
+      register: cfg
+
+    - name: Assert metrics in config
+      ansible.builtin.assert:
+        that:
+          - "'used_percent' in (cfg.content | b64decode) or 'disk_used_percent' in (cfg.content | b64decode)"
+          - "'free' in (cfg.content | b64decode)"
+        fail_msg: "[FAIL] Config missing disk measurements"
+        success_msg: "[PASS] Config contains disk measurements"
+
+    - name: Validation summary
+      ansible.builtin.debug:
+        msg: >-
+          [PASS] Host-level validation OK for {{ inventory_hostname }}.
+          Still required: scripts/validate_live.sh to confirm CloudWatch datapoints.

@@ -1,0 +1,85 @@
+---
+# Idempotent CloudWatch Agent enrollment for disk metrics.
+# Ansible manages desired state; CloudWatch Agent continuously observes.
+
+- name: Log enrollment start
+  ansible.builtin.debug:
+    msg: >-
+      [INFO] Enrolling {{ inventory_hostname }} ({{ ansible_facts['distribution'] | default('unknown') }})
+      for disk monitoring under namespace {{ metric_namespace }}
+
+- name: Assert Linux target (Windows is a future extension)
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Linux'
+    fail_msg: >-
+      [FAIL] Host {{ inventory_hostname }} is not Linux.
+      This MVP supports Linux only. See role README for Windows extension notes.
+    success_msg: "[PASS] Host OS is Linux"
+
+- name: Include OS-family install tasks
+  ansible.builtin.include_tasks: "install_{{ ansible_os_family | lower }}.yml"
+
+- name: Deploy CloudWatch Agent disk metrics configuration
+  ansible.builtin.template:
+    src: amazon-cloudwatch-agent.json.j2
+    dest: "{{ cw_agent_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart CloudWatch Agent after config change
+    - Ensure CloudWatch Agent systemd unit is enabled
+
+- name: Flush handlers so agent reloads before validation
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure CloudWatch Agent service is started and enabled
+  ansible.builtin.systemd:
+    name: "{{ cw_agent_service }}"
+    state: started
+    enabled: true
+  register: cw_service
+  retries: "{{ service_wait_retries }}"
+  delay: "{{ service_wait_delay_seconds }}"
+  until: cw_service is succeeded
+  when: ansible_service_mgr == 'systemd'
+
+- name: Wait until CloudWatch Agent process is active
+  ansible.builtin.command: systemctl is-active {{ cw_agent_service }}
+  register: cw_active
+  changed_when: false
+  failed_when: false
+  retries: "{{ service_wait_retries }}"
+  delay: "{{ service_wait_delay_seconds }}"
+  until: cw_active.stdout is defined and cw_active.stdout == 'active'
+
+- name: Assert CloudWatch Agent is active
+  ansible.builtin.assert:
+    that:
+      - cw_active.stdout == 'active'
+    fail_msg: >-
+      [FAIL] {{ cw_agent_service }} is not active on {{ inventory_hostname }}.
+      Check journalctl -u {{ cw_agent_service }} and docs/05-troubleshooting.md
+    success_msg: "[PASS] CloudWatch Agent service is active"
+
+- name: Read deployed agent configuration
+  ansible.builtin.slurp:
+    src: "{{ cw_agent_config_path }}"
+  register: cw_config_slurp
+
+- name: Assert configuration contains required disk metrics
+  ansible.builtin.assert:
+    that:
+      - "'disk_used_percent' in (cw_config_slurp.content | b64decode)"
+      - "'disk_free' in (cw_config_slurp.content | b64decode)"
+      - metric_namespace in (cw_config_slurp.content | b64decode)
+    fail_msg: "[FAIL] Agent config missing required disk metrics or namespace"
+    success_msg: "[PASS] Agent config includes disk_used_percent, disk_free, and namespace"
+
+- name: Log enrollment complete
+  ansible.builtin.debug:
+    msg: >-
+      [PASS] Enrollment complete for {{ inventory_hostname }}.
+      Metrics publish to CloudWatch namespace {{ metric_namespace }}.
+      Allow up to {{ collection_interval_seconds * 3 }}s then run validate-enrollment / validate_live.sh

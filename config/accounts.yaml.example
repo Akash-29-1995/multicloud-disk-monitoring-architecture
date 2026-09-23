@@ -1,0 +1,50 @@
+# Multi-customer / multi-account registry — copy to accounts.yaml and edit.
+# accounts.yaml is gitignored. Never put secrets here (ExternalId belongs in CI secrets / SSO).
+#
+# How to use:
+#   1. Deploy DiskMonitoringExecutionRole in each workload account (docs/03).
+#   2. List each account below with customer_id + cloud_provider.
+#   3. Orchestrator / Ansible use this file for AssumeRole targets.
+
+accounts:
+  - name: nike-prod-a
+    customer_id: nike
+    cloud_provider: aws
+    account_id: "111111111111"
+    environment: prod
+    role_arn: "arn:aws:iam::111111111111:role/DiskMonitoringExecutionRole"
+    regions:
+      - us-east-1
+    # external_id: ""   # set via env LUCIDITY_EXTERNAL_ID or CI secret — not in git
+    status: enrolled    # enrolled | onboarding | non_compliant
+
+  - name: nike-prod-b
+    customer_id: nike
+    cloud_provider: aws
+    account_id: "222222222222"
+    environment: prod
+    role_arn: "arn:aws:iam::222222222222:role/DiskMonitoringExecutionRole"
+    regions:
+      - us-east-1
+    status: onboarding
+
+  # - name: adidas-gcp-prod
+  #   customer_id: adidas
+  #   cloud_provider: gcp
+  #   project_id: adidas-prod
+  #   environment: prod
+  #   regions:
+  #     - asia-south1
+  #   status: onboarding
+  #   notes: "GCP adapter is a documented extension point — not implemented in MVP"
+
+tag_contract:
+  Monitoring: enabled
+  MonitoringProfile: standard
+  Environment: prod
+  Customer: nike
+
+notes: |
+  If AssumeRole fails, mark status: non_compliant — do not silently skip.
+  Tag governance: opt-in Monitoring=enabled (see docs/07 and docs/security.md).
+  See docs/05-troubleshooting.md#iam

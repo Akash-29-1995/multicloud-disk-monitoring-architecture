@@ -1,0 +1,14 @@
+---
+- name: Restart CloudWatch Agent after config change
+  ansible.builtin.command: >
+    {{ cw_agent_ctl }} -a fetch-config -m ec2
+    -c file:{{ cw_agent_config_path }} -s
+  changed_when: true
+
+- name: Ensure CloudWatch Agent systemd unit is enabled
+  ansible.builtin.systemd:
+    name: "{{ cw_agent_service }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: ansible_service_mgr == 'systemd'

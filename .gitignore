@@ -1,0 +1,61 @@
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+**/crash.log
+**/crash.*.log
+# Keep .terraform.lock.hcl committed for reproducible provider versions
+**/terraform.tfvars
+!**/*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ansible
+ansible/logs/*.log
+!ansible/logs/.gitkeep
+*.retry
+.vault_pass
+.vault_pass.txt
+ansible/group_vars/all.yml
+!ansible/group_vars/all.yml.example
+
+# Secrets & credentials (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials
+credentials.csv
+aws_credentials
+secrets/
+**/secrets.yml
+**/vault.yml
+config/accounts.yaml
+!config/accounts.yaml.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Python / local tooling
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated validation output
+scripts/output/
+*.out
+
+# Orchestrator generated inventory (keep folder README)
+ansible/inventory/generated/*
+!ansible/inventory/generated/README.md
+orchestrator/**/__pycache__/
+.pytest_cache/

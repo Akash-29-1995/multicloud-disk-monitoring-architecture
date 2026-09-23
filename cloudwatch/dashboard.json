@@ -1,0 +1,73 @@
+{
+  "widgets": [
+    {
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 24,
+      "height": 2,
+      "properties": {
+        "markdown": "# Lucidity Disk Monitoring\nCross-account disk utilization visibility (CWAgent). Status: Healthy < 80% | Warning 80–90% | Critical > 90% + absolute free-space floor."
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 2,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Disk used percent (by instance)",
+        "region": "${region}",
+        "view": "timeSeries",
+        "stacked": false,
+        "stat": "Average",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 100
+          }
+        },
+        "metrics": [
+          [ "${namespace}", "disk_used_percent", { "stat": "Average" } ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 2,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Disk free (bytes)",
+        "region": "${region}",
+        "view": "timeSeries",
+        "stacked": false,
+        "stat": "Average",
+        "period": 300,
+        "metrics": [
+          [ "${namespace}", "disk_free", { "stat": "Average" } ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 8,
+      "width": 24,
+      "height": 6,
+      "properties": {
+        "title": "Disk used percent — table (InstanceId / path / fstype)",
+        "region": "${region}",
+        "view": "table",
+        "stat": "Average",
+        "period": 300,
+        "metrics": [
+          [ "${namespace}", "disk_used_percent", { "stat": "Average" } ]
+        ]
+      }
+    }
+  ]
+}

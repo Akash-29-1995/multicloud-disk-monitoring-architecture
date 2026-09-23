@@ -1,0 +1,87 @@
+// Lucidity disk monitoring — thin Jenkins trigger
+// Jenkins must NOT contain cloud API logic or hardcoded secrets.
+// Discovery/auth lives in the Python orchestrator.
+
+pipeline {
+  agent any
+
+  parameters {
+    choice(name: 'CLOUD_PROVIDER', choices: ['aws', 'gcp', 'azure'], description: 'Cloud adapter')
+    string(name: 'CUSTOMER_ID', defaultValue: 'nike', description: 'Customer id')
+    string(name: 'ACCOUNT_ID', defaultValue: '111111111111', description: 'AWS account id')
+    string(name: 'ENVIRONMENT', defaultValue: 'prod', description: 'dev | pre-prod | prod')
+    string(name: 'REGION', defaultValue: 'us-east-1', description: 'Region')
+    string(name: 'MONITORING_PROFILE', defaultValue: 'standard', description: 'From config/monitoring-profiles.yaml')
+    choice(name: 'ACTION', choices: ['enroll', 'reconcile', 'discover'], description: 'Post-discovery action')
+    booleanParam(name: 'DRY_RUN', defaultValue: true, description: 'Simulate without live AWS calls')
+    booleanParam(name: 'RUN_ANSIBLE', defaultValue: false, description: 'Run Ansible after orchestrator (live only)')
+  }
+
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
+    }
+
+    stage('Install Python deps') {
+      steps {
+        sh 'python3 -m pip install --user -r orchestrator/requirements.txt'
+      }
+    }
+
+    stage('Orchestrate') {
+      steps {
+        script {
+          def dry = params.DRY_RUN ? '--dry-run' : ''
+          // Optional: bind ExternalId from Jenkins credentials store as LUCIDITY_EXTERNAL_ID
+          sh """
+            python3 -m orchestrator \\
+              --cloud ${params.CLOUD_PROVIDER} \\
+              --customer ${params.CUSTOMER_ID} \\
+              --account ${params.ACCOUNT_ID} \\
+              --environment ${params.ENVIRONMENT} \\
+              --region ${params.REGION} \\
+              --monitoring-profile ${params.MONITORING_PROFILE} \\
+              --action ${params.ACTION} \\
+              ${dry}
+          """
+        }
+      }
+    }
+
+    stage('Ansible enroll') {
+      when {
+        allOf {
+          expression { return params.RUN_ANSIBLE == true }
+          expression { return params.ACTION != 'discover' }
+          expression { return params.DRY_RUN == false }
+        }
+      }
+      environment {
+        ACTION = "${params.ACTION}"
+      }
+      steps {
+        dir('ansible') {
+          sh '''
+            INV=$(ls -1t inventory/generated/*.ini 2>/dev/null | head -1)
+            if [ -z "$INV" ]; then
+              echo "[FAIL] No generated inventory found"
+              exit 1
+            fi
+            echo "[INFO] Using inventory $INV"
+            PLAYBOOK=playbooks/enroll.yml
+            if [ "$ACTION" = "reconcile" ]; then
+              PLAYBOOK=playbooks/configure-monitoring.yml
+            fi
+            ansible-playbook -i "$INV" "$PLAYBOOK" -v
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'ansible/inventory/generated/*', allowEmptyArchive: true
+    }
+  }
+}

@@ -1,0 +1,34 @@
+---
+- name: Check whether CloudWatch Agent package is installed (RedHat family)
+  ansible.builtin.command: rpm -q amazon-cloudwatch-agent
+  register: cw_rpm
+  changed_when: false
+  failed_when: false
+
+- name: Download CloudWatch Agent RPM
+  ansible.builtin.get_url:
+    url: "{{ cw_agent_package_url_amazon_linux }}"
+    dest: /tmp/amazon-cloudwatch-agent.rpm
+    mode: "0644"
+  when: cw_rpm.rc != 0
+  retries: "{{ agent_install_retries }}"
+  delay: "{{ agent_install_delay_seconds }}"
+  register: cw_rpm_download
+  until: cw_rpm_download is succeeded
+
+- name: Install CloudWatch Agent RPM
+  ansible.builtin.yum:
+    name: /tmp/amazon-cloudwatch-agent.rpm
+    state: present
+    disable_gpg_check: true
+  when: cw_rpm.rc != 0
+  retries: "{{ agent_install_retries }}"
+  delay: "{{ agent_install_delay_seconds }}"
+  register: cw_rpm_install
+  until: cw_rpm_install is succeeded
+
+- name: Log RPM install result
+  ansible.builtin.debug:
+    msg: >-
+      {{ '[PASS] CloudWatch Agent already installed' if cw_rpm.rc == 0
+         else '[PASS] CloudWatch Agent RPM installed' }}

@@ -1,0 +1,27 @@
+---
+# Reconcile / drift repair — safe to re-run (idempotent).
+# Use when agent-missing alarm fires or after AMI/config drift.
+
+- name: Reconcile CloudWatch Agent monitoring configuration
+  hosts: all
+  become: true
+  gather_facts: true
+  serial: "{{ serial_batch_size | default(50) }}"
+  max_fail_percentage: "{{ max_fail_percentage | default(25) }}"
+
+  vars:
+    ansible_connection: aws_ssm
+    ansible_aws_ssm_region: "{{ aws_region | default('us-east-1') }}"
+
+  pre_tasks:
+    - name: Log reconcile start
+      ansible.builtin.debug:
+        msg: "[INFO] configure-monitoring.yml (reconcile) on {{ inventory_hostname }}"
+
+  roles:
+    - role: cloudwatch_agent
+
+  post_tasks:
+    - name: Reconcile complete
+      ansible.builtin.debug:
+        msg: "[PASS] Configuration reconciled on {{ inventory_hostname }}"
