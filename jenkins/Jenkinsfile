@@ -1,54 +1,204 @@
-// Lucidity disk monitoring — thin Jenkins trigger
-// Jenkins must NOT contain cloud API logic or hardcoded secrets.
-// Discovery/auth lives in the Python orchestrator.
+// =============================================================================
+// Lucidity Disk Monitoring — Architecture-oriented Jenkins control plane
+// =============================================================================
+//
+// DESIGN RULES (Solution Architect):
+//   1. Jenkins is the CONTROL-PLANE TRIGGER, not the monitoring data plane.
+//   2. Jenkins must NOT embed AWS/GCP/Azure API logic or long-lived secrets.
+//   3. Stages mirror the architecture flow:
+//        Trigger → Discover → Enroll/Heal → Validate → (CloudWatch observes forever)
+//   4. If this Jenkins job is DOWN, already-enrolled CloudWatch Agents KEEP running.
+//   5. Retries / waits belong here and in Ansible — not a custom healing microservice.
+//
+// Architecture reference: architecture/architecture.md
+// Auto-heal reference:    docs/reliability.md
+// =============================================================================
 
 pipeline {
   agent any
 
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    timeout(time: 90, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '30'))
+  }
+
   parameters {
-    choice(name: 'CLOUD_PROVIDER', choices: ['aws', 'gcp', 'azure'], description: 'Cloud adapter')
-    string(name: 'CUSTOMER_ID', defaultValue: 'nike', description: 'Customer id')
+    choice(
+      name: 'CLOUD_PROVIDER',
+      choices: ['aws', 'gcp', 'azure'],
+      description: 'Cloud adapter (AWS implemented; GCP/Azure stubs)'
+    )
+    string(name: 'CUSTOMER_ID', defaultValue: 'nike', description: 'SaaS customer id')
     string(name: 'ACCOUNT_ID', defaultValue: '111111111111', description: 'AWS account id')
     string(name: 'ENVIRONMENT', defaultValue: 'prod', description: 'dev | pre-prod | prod')
-    string(name: 'REGION', defaultValue: 'us-east-1', description: 'Region')
-    string(name: 'MONITORING_PROFILE', defaultValue: 'standard', description: 'From config/monitoring-profiles.yaml')
-    choice(name: 'ACTION', choices: ['enroll', 'reconcile', 'discover'], description: 'Post-discovery action')
-    booleanParam(name: 'DRY_RUN', defaultValue: true, description: 'Simulate without live AWS calls')
-    booleanParam(name: 'RUN_ANSIBLE', defaultValue: false, description: 'Run Ansible after orchestrator (live only)')
+    string(name: 'REGION', defaultValue: 'us-east-1', description: 'AWS region')
+    string(
+      name: 'MONITORING_PROFILE',
+      defaultValue: 'standard',
+      description: 'Threshold profile from config/monitoring-profiles.yaml'
+    )
+    choice(
+      name: 'ACTION',
+      choices: ['enroll', 'reconcile', 'autoheal', 'discover'],
+      description: '''Control-plane action:
+enroll   = first-time agent install/config
+reconcile / autoheal = idempotent repair when agent-missing / drift
+discover = inventory only (no Ansible)'''
+    )
+    booleanParam(
+      name: 'DRY_RUN',
+      defaultValue: true,
+      description: 'Simulate discovery without live cloud API mutations'
+    )
+    booleanParam(
+      name: 'RUN_ANSIBLE',
+      defaultValue: false,
+      description: 'Run Ansible enroll/heal after discovery (live only)'
+    )
+    booleanParam(
+      name: 'VALIDATE_HOST',
+      defaultValue: true,
+      description: 'After Ansible, assert agent package/service/config on hosts'
+    )
+    booleanParam(
+      name: 'VALIDATE_CLOUDWATCH',
+      defaultValue: false,
+      description: 'Poll CloudWatch until disk metrics appear (needs AWS; waits/retries)'
+    )
+    string(
+      name: 'IAM_PROPAGATION_WAIT_SECONDS',
+      defaultValue: '45',
+      description: 'Wait after discovery before Ansible (IAM/SSM eventual consistency)'
+    )
+    string(
+      name: 'ORCHESTRATOR_RETRIES',
+      defaultValue: '3',
+      description: 'Retries for orchestrator stage on transient failure'
+    )
+    string(
+      name: 'ANSIBLE_RETRIES',
+      defaultValue: '2',
+      description: 'Retries for Ansible enroll/heal stage'
+    )
+  }
+
+  environment {
+    // Prefer IAM role / OIDC on the agent. Optional ExternalId:
+    //   withCredentials([string(credentialsId: 'lucidity-external-id', variable: 'LUCIDITY_EXTERNAL_ID')]) { ... }
+    PYTHONUNBUFFERED = '1'
   }
 
   stages {
-    stage('Checkout') {
-      steps { checkout scm }
+
+    // -------------------------------------------------------------------------
+    // Stage 0 — Architecture context (human-readable, for reviewers/logs)
+    // -------------------------------------------------------------------------
+    stage('Architecture context') {
+      steps {
+        echo """
+================================================================================
+ LUCIDITY DISK MONITORING — CONTROL PLANE JOB
+================================================================================
+ Flow this job implements:
+   1) Trigger (this Jenkins job + parameters)
+   2) Discover (Python orchestrator → cloud adapter → AssumeRole → EC2 tags)
+   3) Enroll / Auto-heal (Ansible via SSM → CloudWatch Agent desired state)
+   4) Validate (host asserts + optional CloudWatch metric poll with retries)
+   5) Observe forever (CloudWatch Agent → metrics/alarms)  << NOT this job
+
+ Failure isolation:
+   If Jenkins is down, enrolled agents CONTINUE publishing disk metrics.
+   Auto-heal = re-run ACTION=reconcile|autoheal (idempotent), not a custom DB/UI.
+
+ Docs: architecture/architecture.md | docs/reliability.md | docs/08-jenkins-thin-trigger.md
+================================================================================
+ Parameters: cloud=${params.CLOUD_PROVIDER} customer=${params.CUSTOMER_ID} \\
+   account=${params.ACCOUNT_ID} env=${params.ENVIRONMENT} region=${params.REGION} \\
+   action=${params.ACTION} dry_run=${params.DRY_RUN} ansible=${params.RUN_ANSIBLE}
+"""
+      }
     }
 
-    stage('Install Python deps') {
+    stage('Checkout') {
       steps {
+        checkout scm
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Stage 1 — Preconditions (no cloud API business logic)
+    // -------------------------------------------------------------------------
+    stage('Preconditions') {
+      steps {
+        sh '''
+          set -euo pipefail
+          echo "[INFO] Checking control-plane tools..."
+          command -v python3 >/dev/null
+          python3 --version
+          test -f orchestrator/requirements.txt
+          test -f config/monitoring-profiles.yaml
+          test -f config/customer-accounts.template.yaml
+          echo "[PASS] Preconditions OK"
+        '''
         sh 'python3 -m pip install --user -r orchestrator/requirements.txt'
       }
     }
 
-    stage('Orchestrate') {
+    // -------------------------------------------------------------------------
+    // Stage 2 — Discover (orchestrator). Retries for transient STS/API errors.
+    // -------------------------------------------------------------------------
+    stage('Discover (orchestrator)') {
       steps {
         script {
           def dry = params.DRY_RUN ? '--dry-run' : ''
-          // Optional: bind ExternalId from Jenkins credentials store as LUCIDITY_EXTERNAL_ID
-          sh """
-            python3 -m orchestrator \\
-              --cloud ${params.CLOUD_PROVIDER} \\
-              --customer ${params.CUSTOMER_ID} \\
-              --account ${params.ACCOUNT_ID} \\
-              --environment ${params.ENVIRONMENT} \\
-              --region ${params.REGION} \\
-              --monitoring-profile ${params.MONITORING_PROFILE} \\
-              --action ${params.ACTION} \\
-              ${dry}
-          """
+          def orchAction = (params.ACTION == 'autoheal') ? 'reconcile' : params.ACTION
+          def attempts = params.ORCHESTRATOR_RETRIES.toInteger()
+          retry(attempts) {
+            echo "[INFO] Orchestrator attempt (max ${attempts}) — mode=${params.DRY_RUN ? 'DRY_RUN' : 'LIVE'}"
+            sh """
+              set -euo pipefail
+              PYTHONPATH=. python3 -m orchestrator \\
+                --cloud ${params.CLOUD_PROVIDER} \\
+                --customer ${params.CUSTOMER_ID} \\
+                --account ${params.ACCOUNT_ID} \\
+                --environment ${params.ENVIRONMENT} \\
+                --region ${params.REGION} \\
+                --monitoring-profile ${params.MONITORING_PROFILE} \\
+                --action ${orchAction} \\
+                ${dry}
+            """
+          }
         }
       }
     }
 
-    stage('Ansible enroll') {
+    // -------------------------------------------------------------------------
+    // Stage 3 — Wait for IAM/SSM eventual consistency before touching hosts
+    // -------------------------------------------------------------------------
+    stage('Wait (IAM / SSM propagation)') {
+      when {
+        allOf {
+          expression { return params.DRY_RUN == false }
+          expression { return params.RUN_ANSIBLE == true }
+          expression { return params.ACTION != 'discover' }
+        }
+      }
+      steps {
+        script {
+          def secs = params.IAM_PROPAGATION_WAIT_SECONDS.toInteger()
+          echo "[INFO] Waiting ${secs}s for IAM/SSM propagation before Ansible (architecture wait gate)"
+          sleep time: secs, unit: 'SECONDS'
+          echo '[PASS] Wait complete'
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Stage 4 — Enroll OR Auto-heal (Ansible desired state via SSM)
+    // -------------------------------------------------------------------------
+    stage('Enroll or Auto-heal (Ansible)') {
       when {
         allOf {
           expression { return params.RUN_ANSIBLE == true }
@@ -58,30 +208,129 @@ pipeline {
       }
       environment {
         ACTION = "${params.ACTION}"
+        ANSIBLE_RETRIES = "${params.ANSIBLE_RETRIES}"
       }
       steps {
-        dir('ansible') {
-          sh '''
-            INV=$(ls -1t inventory/orchestrator-output/*.ini 2>/dev/null | head -1)
-            if [ -z "$INV" ]; then
-              echo "[FAIL] No generated inventory found"
-              exit 1
-            fi
-            echo "[INFO] Using inventory $INV"
-            PLAYBOOK=playbooks/enroll-disk-monitoring.yml
-            if [ "$ACTION" = "reconcile" ]; then
-              PLAYBOOK=playbooks/reconcile-agent-config.yml
-            fi
-            ansible-playbook -i "$INV" "$PLAYBOOK" -v
-          '''
+        script {
+          def attempts = params.ANSIBLE_RETRIES.toInteger()
+          retry(attempts) {
+            dir('ansible') {
+              sh '''
+                set -euo pipefail
+                INV=$(ls -1t inventory/orchestrator-output/*.ini 2>/dev/null | head -1 || true)
+                if [ -z "$INV" ]; then
+                  echo "[FAIL] No inventory in inventory/orchestrator-output/ — Discover stage must succeed first"
+                  exit 1
+                fi
+                echo "[INFO] Using inventory: $INV"
+
+                # Architecture mapping:
+                #   enroll   → first-time desired state
+                #   reconcile|autoheal → idempotent repair (agent-missing / drift)
+                PLAYBOOK=playbooks/enroll-disk-monitoring.yml
+                case "$ACTION" in
+                  reconcile|autoheal)
+                    PLAYBOOK=playbooks/reconcile-agent-config.yml
+                    echo "[INFO] AUTO-HEAL path selected → $PLAYBOOK"
+                    ;;
+                  enroll)
+                    echo "[INFO] ENROLL path selected → $PLAYBOOK"
+                    ;;
+                  *)
+                    echo "[FAIL] Unsupported ACTION for Ansible: $ACTION"
+                    exit 2
+                    ;;
+                esac
+
+                echo "[INFO] Ansible retries configured at Jenkins stage level; playbook also uses task retries/until"
+                ansible-playbook -i "$INV" "$PLAYBOOK" -v
+              '''
+            }
+          }
         }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Stage 5 — Host-level output validation (asserts on the VM)
+    // -------------------------------------------------------------------------
+    stage('Validate host (agent state)') {
+      when {
+        allOf {
+          expression { return params.RUN_ANSIBLE == true }
+          expression { return params.VALIDATE_HOST == true }
+          expression { return params.ACTION != 'discover' }
+          expression { return params.DRY_RUN == false }
+        }
+      }
+      steps {
+        retry(2) {
+          dir('ansible') {
+            sh '''
+              set -euo pipefail
+              INV=$(ls -1t inventory/orchestrator-output/*.ini 2>/dev/null | head -1)
+              echo "[INFO] Validating agent on hosts via $INV"
+              ansible-playbook -i "$INV" playbooks/validate-agent-on-host.yml -v
+            '''
+          }
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Stage 6 — Data-plane validation (poll CloudWatch with wait/retry)
+    // -------------------------------------------------------------------------
+    stage('Validate CloudWatch metrics') {
+      when {
+        allOf {
+          expression { return params.VALIDATE_CLOUDWATCH == true }
+          expression { return params.DRY_RUN == false }
+          expression { return params.ACTION != 'discover' }
+        }
+      }
+      steps {
+        sh '''
+          set -euo pipefail
+          # Prefer first host from latest inventory; fall back to ACCOUNT-scoped discover only
+          INV=$(ls -1t ansible/inventory/orchestrator-output/*.ini 2>/dev/null | head -1 || true)
+          if [ -z "$INV" ]; then
+            echo "[FAIL] No inventory to derive instance ids from"
+            exit 1
+          fi
+          # Extract first i-xxxxxxxxx from inventory
+          IID=$(grep -Eo 'i-[0-9a-fA-F]+' "$INV" | head -1 || true)
+          if [ -z "$IID" ]; then
+            echo "[WARN] No live instance id in inventory (dry-run hosts are i-DRYRUN...). Skipping metric poll."
+            exit 0
+          fi
+          echo "[INFO] Polling CloudWatch for disk_used_percent on $IID (built-in wait/retry loop)"
+          ./scripts/validate-cloudwatch-metrics.sh \
+            --instance-id "$IID" \
+            --region "${REGION}" \
+            --timeout 300
+        '''
       }
     }
   }
 
   post {
+    success {
+      echo """
+[PASS] Control-plane job succeeded.
+Next: CloudWatch continues observation independently of Jenkins.
+If agent-missing alarm fires later → re-run with ACTION=autoheal, RUN_ANSIBLE=true, DRY_RUN=false.
+"""
+    }
+    failure {
+      echo """
+[FAIL] Control-plane job failed.
+Check: docs/05-troubleshooting.md and docs/reliability.md
+Transient errors: increase ORCHESTRATOR_RETRIES / ANSIBLE_RETRIES and re-run.
+Heal path: ACTION=autoheal + RUN_ANSIBLE=true (idempotent reconcile).
+"""
+    }
     always {
-      archiveArtifacts artifacts: 'ansible/inventory/orchestrator-output/*', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'ansible/inventory/orchestrator-output/*,ansible/logs/*.log', allowEmptyArchive: true
     }
   }
 }

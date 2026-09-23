@@ -18,7 +18,7 @@
 | Add **more AWS accounts** | [docs/03-multi-account-onboarding.md](docs/03-multi-account-onboarding.md) |
 | Try discovery **without AWS** (dry-run) | [docs/06-orchestrator-dry-run.md](docs/06-orchestrator-dry-run.md) |
 | Understand Nike/Adidas multi-customer model | [docs/07-multi-customer-saas-model.md](docs/07-multi-customer-saas-model.md) |
-| See Jenkins usage | [docs/08-jenkins-thin-trigger.md](docs/08-jenkins-thin-trigger.md) |
+| See Jenkins control-plane job | [docs/08-jenkins-thin-trigger.md](docs/08-jenkins-thin-trigger.md) |
 | Prove everything works | [docs/04-validation-checklist.md](docs/04-validation-checklist.md) |
 | Fix a failure | [docs/05-troubleshooting.md](docs/05-troubleshooting.md) |
 
@@ -60,7 +60,7 @@
 | `config/customer-accounts.template.yaml` | Sample customer→account registry (copy to `customer-accounts.yaml`) |
 | `config/monitoring-profiles.yaml` | Disk warning/critical thresholds |
 | `orchestrator/` | Discovers VMs; writes Ansible inventory |
-| `jenkins/Jenkinsfile` | Thin CI trigger (no cloud API logic) |
+| `jenkins/Jenkinsfile` | Architecture-stage control plane (discover → enroll/heal → validate) with retries |
 | `terraform/environments/single-account-mvp/` | First AWS deploy (one account) |
 | `terraform/environments/workload-account/` | IAM role inside a customer account |
 | `terraform/environments/central-monitoring-account/` | Central dashboard + role registry |
@@ -111,11 +111,25 @@ Full copy-paste steps with expected output: [docs/02-single-account-onboarding.m
 
 | Layer | Does | Does **not** |
 |-------|------|----------------|
-| Jenkins | Pass parameters | Contain AWS API code |
+| Jenkins | Architecture stages: discover → enroll/autoheal → validate (with retries/waits) | Embed AWS API logic or continuous `df` polling |
 | Orchestrator | Discover + inventory | Continuously poll disk |
-| Terraform | IAM, dashboard, alarms | Configure packages on the OS |
-| Ansible | Install/configure agent via SSM | Act as the monitoring engine |
+| Terraform | IAM, dashboard, alarms (incl. agent-missing heal signal) | Configure packages on the OS |
+| Ansible | Install/configure/heal agent via SSM (retries/until) | Act as the monitoring engine |
 | CloudWatch Agent | Continuous disk metrics | Depend on Jenkins being up |
+
+---
+
+## Auto-healing & retries
+
+| Mechanism | Where |
+|-----------|--------|
+| Package/service `retries` + `until` | Ansible `cloudwatch_agent` role |
+| SSM backoff before heal | `reconcile-agent-config.yml` |
+| Jenkins `retry()` + IAM wait gate | `jenkins/Jenkinsfile` stages |
+| Metric poll wait loop | `scripts/validate-cloudwatch-metrics.sh` |
+| Heal trigger | Alarm `disk-agent-missing-*` → Jenkins `ACTION=autoheal` |
+
+Details: [docs/reliability.md](docs/reliability.md) · [docs/08-jenkins-thin-trigger.md](docs/08-jenkins-thin-trigger.md)
 
 ---
 

@@ -1,6 +1,11 @@
 ---
-# Reconcile / drift repair — safe to re-run (idempotent).
-# Use when agent-missing alarm fires or after AMI/config drift.
+# Idempotent auto-heal / drift repair for CloudWatch Agent.
+# Trigger when:
+#   - CloudWatch alarm disk-agent-missing-* fires
+#   - validate-agent-on-host fails
+#   - Jenkins ACTION=reconcile|autoheal
+#
+# Safe to re-run: retries + until waits on install/service; no duplicate agents.
 
 - name: Reconcile CloudWatch Agent monitoring configuration
   hosts: all
@@ -14,14 +19,43 @@
     ansible_aws_ssm_region: "{{ aws_region | default('us-east-1') }}"
 
   pre_tasks:
-    - name: Log reconcile start
+    - name: Log auto-heal / reconcile start
       ansible.builtin.debug:
-        msg: "[INFO] reconcile-agent-config.yml (reconcile) on {{ inventory_hostname }}"
+        msg: "[INFO] AUTO-HEAL reconcile-agent-config.yml on {{ inventory_hostname }}"
+
+    - name: Wait for SSM reachability before heal (retry/backoff)
+      ansible.builtin.ping:
+      register: ssm_ping
+      retries: "{{ heal_ssm_retries | default(5) }}"
+      delay: "{{ heal_ssm_delay_seconds | default(15) }}"
+      until: ssm_ping is succeeded
+      ignore_errors: true
+
+    - name: Assert SSM before heal
+      ansible.builtin.assert:
+        that:
+          - ssm_ping is succeeded
+        fail_msg: >-
+          [FAIL] Cannot auto-heal {{ inventory_hostname }} — SSM Offline.
+          Fix instance profile / VPC endpoints, then re-run.
+        success_msg: "[PASS] SSM Online — proceeding with auto-heal"
 
   roles:
     - role: cloudwatch_agent
 
   post_tasks:
-    - name: Reconcile complete
-      ansible.builtin.debug:
-        msg: "[PASS] Configuration reconciled on {{ inventory_hostname }}"
+    - name: Confirm agent active after heal
+      ansible.builtin.command: systemctl is-active amazon-cloudwatch-agent
+      register: heal_active
+      changed_when: false
+      failed_when: false
+      retries: "{{ service_wait_retries | default(12) }}"
+      delay: "{{ service_wait_delay_seconds | default(5) }}"
+      until: heal_active.stdout is defined and heal_active.stdout == 'active'
+
+    - name: Assert heal restored agent
+      ansible.builtin.assert:
+        that:
+          - heal_active.stdout == 'active'
+        fail_msg: "[FAIL] Auto-heal did not restore amazon-cloudwatch-agent — see docs/05-troubleshooting.md"
+        success_msg: "[PASS] Auto-heal complete — CloudWatch Agent is active on {{ inventory_hostname }}"

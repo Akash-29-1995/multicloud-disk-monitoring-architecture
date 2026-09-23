@@ -15,6 +15,8 @@ agent_install_retries: 5
 agent_install_delay_seconds: 15
 service_wait_retries: 12
 service_wait_delay_seconds: 5
+heal_ssm_retries: 5
+heal_ssm_delay_seconds: 15
 
 # Bounded execution at scale
 serial_batch_size: 50
